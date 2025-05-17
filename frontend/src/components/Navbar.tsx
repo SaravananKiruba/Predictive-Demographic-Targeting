@@ -10,17 +10,17 @@ const Navbar: React.FC = () => {
       <Flex align="center" justify="space-between" maxW="1400px" mx="auto">
         <Flex align="center">
           <Image src="/logo192.png" alt="Logo" boxSize="40px" mr={3} />
-          <Heading size="md" color="brand.600">Healthcare Analytics</Heading>
+          <Heading size="md" color="brand.600">Predictive Demographic Targeting</Heading>
         </Flex>
         
         <HStack spacing={4}>
           <Link to="/">
-            <Button variant="ghost">Dashboard</Button>
+            <Button variant="ghost">Home</Button>
           </Link>
           <Link to="#">
-            <Button variant="ghost">About</Button>
+            <Button variant="ghost">Documentation</Button>
           </Link>
-          <Button colorScheme="blue">Contact Us</Button>
+          <Button colorScheme="blue">Help</Button>
         </HStack>
       </Flex>
     </Box>

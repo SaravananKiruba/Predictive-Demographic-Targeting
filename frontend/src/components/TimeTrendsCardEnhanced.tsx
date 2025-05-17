@@ -4,6 +4,8 @@ import {
   Heading,
   Text,
   useColorModeValue,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -37,9 +39,30 @@ interface TimeTrendsProps {
   };
 }
 
-const TimeTrendsCard: React.FC<TimeTrendsProps> = ({ data }) => {
-  const { months, values, trend_analysis } = data;
+const TimeTrendsCardEnhanced: React.FC<TimeTrendsProps> = ({ data }) => {
+  const { months, values, trend_analysis } = data || { months: [], values: [], trend_analysis: '' };
   const cardBg = useColorModeValue('white', 'gray.700');
+  
+  // Validate data
+  const isDataValid = 
+    Array.isArray(months) && months.length > 0 &&
+    Array.isArray(values) && values.length > 0 &&
+    typeof trend_analysis === 'string';
+  
+  if (!isDataValid) {
+    return (
+      <Box bg={cardBg} p={6} borderRadius="lg" boxShadow="md" height="100%">
+        <Heading as="h2" size="md" mb={4} color="brand.600">
+          Time-Based Trends (Last 12 Months)
+        </Heading>
+        <Alert status="info" borderRadius="md">
+          <AlertIcon />
+          <Text>Data not available</Text>
+        </Alert>
+      </Box>
+    );
+  }
+  
   const chartColor = useColorModeValue('rgba(49, 130, 206, 1)', 'rgba(99, 179, 237, 1)');
   const chartAreaColor = useColorModeValue('rgba(49, 130, 206, 0.2)', 'rgba(99, 179, 237, 0.2)');
   
@@ -111,4 +134,4 @@ const TimeTrendsCard: React.FC<TimeTrendsProps> = ({ data }) => {
   );
 };
 
-export default TimeTrendsCard;
+export default TimeTrendsCardEnhanced;

@@ -6,6 +6,9 @@ import {
   Badge,
   Flex,
   Icon,
+  Alert,
+  AlertIcon,
+  useColorModeValue
 } from '@chakra-ui/react';
 import { FaStar, FaLocationDot } from 'react-icons/fa6';
 
@@ -19,13 +22,33 @@ interface CompetitorDensityProps {
   data: {
     total_competitors: number;
     competitors_list: CompetitorInfo[];
-    heatmap_data: any;
+    heatmap_data?: any;
   };
 }
 
-const CompetitorDensityCard: React.FC<CompetitorDensityProps> = ({ data }) => {
-  const { total_competitors, competitors_list } = data;
-  const cardBg = 'white'; // Simple approach instead of useColorModeValue
+const CompetitorDensityCardEnhanced: React.FC<CompetitorDensityProps> = ({ data }) => {
+  const { total_competitors, competitors_list } = data || { total_competitors: 0, competitors_list: [] };
+  const cardBg = useColorModeValue('white', 'gray.700');
+  
+  // Validate data
+  const isDataValid = 
+    typeof total_competitors === 'number' && 
+    Array.isArray(competitors_list) && 
+    competitors_list.length > 0;
+  
+  if (!isDataValid) {
+    return (
+      <Box bg={cardBg} p={6} borderRadius="lg" boxShadow="md" height="100%">
+        <Heading as="h2" size="md" mb={4} color="brand.600">
+          Competitor Density Analysis
+        </Heading>
+        <Alert status="info" borderRadius="md">
+          <AlertIcon />
+          <Text>Data not available</Text>
+        </Alert>
+      </Box>
+    );
+  }
   
   // Colors for competition density
   const getDensityColor = (count: number) => {
@@ -59,9 +82,9 @@ const CompetitorDensityCard: React.FC<CompetitorDensityProps> = ({ data }) => {
           {densityText} Competition
         </Badge>
       </Flex>
-        {competitors_list.length > 0 ? (
+      
+      {competitors_list.length > 0 ? (
         <Box overflowX="auto">
-          {/* Replace Table component with a custom implementation */}
           <Box as="table" width="100%">
             <Box as="thead">
               <Box as="tr">
@@ -74,15 +97,18 @@ const CompetitorDensityCard: React.FC<CompetitorDensityProps> = ({ data }) => {
               {competitors_list.slice(0, 5).map((competitor, index) => (
                 <Box as="tr" key={index}>
                   <Box as="td" fontWeight="medium" py={2}>{competitor.name}</Box>
-                  <Box as="td" textAlign="right" py={2}>                    <Flex align="center" justify="flex-end">                      <Text mr={1} color={getRatingColor(competitor.rating)}>
+                  <Box as="td" textAlign="right" py={2}>
+                    <Flex align="center" justify="flex-end">
+                      <Text mr={1} color={getRatingColor(competitor.rating)}>
                         {competitor.rating}
                       </Text>
-                      <Icon color={getRatingColor(competitor.rating)}>{FaStar({})}</Icon>
+                      <Icon as={FaStar} color={getRatingColor(competitor.rating)} />
                     </Flex>
                   </Box>
-                  <Box as="td" textAlign="right" py={2}>                    <Flex align="center" justify="flex-end">
+                  <Box as="td" textAlign="right" py={2}>
+                    <Flex align="center" justify="flex-end">
                       <Text>{competitor.distance_km} km</Text>
-                      <Icon ml="4px" color="gray">{FaLocationDot({})}</Icon>
+                      <Icon as={FaLocationDot} ml="4px" color="gray.500" />
                     </Flex>
                   </Box>
                 </Box>
@@ -112,4 +138,4 @@ const CompetitorDensityCard: React.FC<CompetitorDensityProps> = ({ data }) => {
   );
 };
 
-export default CompetitorDensityCard;
+export default CompetitorDensityCardEnhanced;

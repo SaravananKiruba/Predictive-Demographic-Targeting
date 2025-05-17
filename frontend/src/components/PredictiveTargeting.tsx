@@ -12,12 +12,16 @@ import {
   Flex,
   useToast,
   Spinner,
-  Text
+  Text,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
 } from '@chakra-ui/react';
-import LeadConversionCard from './LeadConversionCard';
-import CompetitorDensityCard from './CompetitorDensityCard';
-import TimeTrendsCard from './TimeTrendsCard';
-import SummaryCard from './SummaryCard';
+import LeadConversionCardEnhanced from './LeadConversionCardEnhanced';
+import CompetitorDensityCardEnhanced from './CompetitorDensityCardEnhanced';
+import TimeTrendsCardEnhanced from './TimeTrendsCardEnhanced';
+import SummaryCardEnhanced from './SummaryCardEnhanced';
 
 // Define interfaces for our data
 interface LeadConversionData {
@@ -75,28 +79,23 @@ const healthcareDepartments = [
   'Dental'
 ];
 
-const Dashboard: React.FC = () => {
+const PredictiveTargeting: React.FC = () => {
   const [postalCode, setPostalCode] = useState<string>('');
   const [department, setDepartment] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const toast = useToast();
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!postalCode || !department) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter both postal code and select a healthcare department.',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      setError('Please enter both postal code and select a healthcare department.');
       return;
     }
     
     setIsLoading(true);
+    setError(null);
     
     try {
       const response = await fetch('http://localhost:8000/api/demographic-targeting', {
@@ -111,36 +110,45 @@ const Dashboard: React.FC = () => {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch analytics data');
+        throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
+      
+      // Validate required data exists
+      if (!data) {
+        throw new Error('No data received from server');
+      }
+      
       setAnalyticsData(data);
       
       toast({
         title: 'Success',
-        description: 'Analytics data loaded successfully.',
+        description: 'Demographic targeting data generated successfully',
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
     } catch (error) {
       console.error('Error fetching analytics data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch analytics data');
+      
       toast({
         title: 'Error',
-        description: 'Failed to fetch analytics data. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to fetch data from server',
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {
       setIsLoading(false);
     }
   };
+
   return (
     <Container maxW="container.xl" py={8}>
       <Heading as="h1" mb={8} textAlign="center" fontSize={{ base: '2xl', md: '3xl' }} color="brand.700">
-        Healthcare Demographic Targeting Analytics
+        Predictive Demographic Targeting
       </Heading>
       
       <Box bg="white" p={6} borderRadius="lg" boxShadow="md" mb={8}>
@@ -180,36 +188,43 @@ const Dashboard: React.FC = () => {
                 isLoading={isLoading}
                 loadingText="Analyzing"
               >
-                Generate Analytics
+                Generate Insights
               </Button>
             </Flex>
           </SimpleGrid>
         </form>
       </Box>
       
-      {isLoading && (
+      {error && (
+        <Alert status="error" mb={8} borderRadius="md">
+          <AlertIcon />
+          <AlertTitle mr={2}>Error:</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
+    {isLoading && (
         <Flex justify="center" align="center" direction="column" my={12}>
           <Spinner size="xl" color="blue.500" mb={4} />
           <Text fontSize="lg">Analyzing demographic data for {postalCode} - {department}...</Text>
-          <Text fontSize="sm" color="gray.500" mt={2}>This may take a few moments as we process regional data</Text>
+          <Text fontSize="sm" color="gray.500" mt={2}>Generating insights using Gemini API</Text>
         </Flex>
       )}
       
       {analyticsData && !isLoading && (
         <>
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
-            <LeadConversionCard data={analyticsData.lead_conversion} />
-            <SummaryCard data={analyticsData.summary_analytics} />
+            <LeadConversionCardEnhanced data={analyticsData.lead_conversion} />
+            <SummaryCardEnhanced data={analyticsData.summary_analytics} />
           </SimpleGrid>
           
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-            <CompetitorDensityCard data={analyticsData.competitor_density} />
-            <TimeTrendsCard data={analyticsData.time_trends} />
+            <CompetitorDensityCardEnhanced data={analyticsData.competitor_density} />
+            <TimeTrendsCardEnhanced data={analyticsData.time_trends} />
           </SimpleGrid>
         </>
       )}
-      
-      {!analyticsData && !isLoading && (
+        {!analyticsData && !isLoading && !error && (
         <Flex 
           direction="column" 
           align="center" 
@@ -220,11 +235,15 @@ const Dashboard: React.FC = () => {
           boxShadow="sm"
         >
           <Text fontSize="xl" mb={4} textAlign="center">
-            Enter a postal code and select a healthcare department to get started
+            Predictive Demographic Targeting Tool
           </Text>
-          <Text color="gray.600" textAlign="center">
-            Our AI-powered system will analyze demographic data to provide insights on lead conversion potential, 
-            competitor analysis, and market trends.
+          <Text color="gray.600" textAlign="center" mb={4}>
+            Enter a postal code and select a healthcare department to generate insights using the Gemini AI model.
+            All data is fetched dynamically - no static data is used.
+          </Text>
+          <Text fontSize="sm" color="blue.600">
+            The system analyzes demographic patterns, market trends, and competition to help optimize
+            your healthcare targeting strategy.
           </Text>
         </Flex>
       )}
@@ -232,4 +251,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+export default PredictiveTargeting;
