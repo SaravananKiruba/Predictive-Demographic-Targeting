@@ -13,10 +13,13 @@ load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise ValueError("GEMINI_API_KEY not found in environment variables")
-elif api_key.startswith("your_gemini_api_key"):
+elif api_key.startswith("your_gemini_api_key") or api_key == "YOUR_NEW_API_KEY_HERE":
     print("WARNING: You are using a placeholder Gemini API key. Please update it.")
 
 genai.configure(api_key=api_key)
+
+# Define the model to use - using an up-to-date model name
+GEMINI_MODEL = "gemini-1.5-pro"  # Updated from "gemini-pro" to a currently available model
 
 app = FastAPI(title="Healthcare Demographic Targeting API")
 
@@ -95,39 +98,62 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
     2. competitor_density: {{ total_competitors, competitors_list: [...], heatmap_data: {{...}} }}
     3. time_trends: {{ months, values, trend_analysis }}
     4. summary_analytics: {{ avg_patient_inquiries_per_month, avg_treatment_cost, nearest_major_hospital, high_demand_age_group }}
+    
+    IMPORTANT: Return ONLY valid JSON without any additional text, no markdown formatting.
     """
     try:
         # Try to use Gemini for more natural results
-        model = genai.GenerativeModel('gemini-pro')
+        print(f"Attempting to use Gemini model: {GEMINI_MODEL}")
+        model = genai.GenerativeModel(GEMINI_MODEL)
         response = model.generate_content(prompt)
         response_text = response.text.strip()
 
+        print("Gemini API Response received.")
+        
         # Extract JSON from response
         if "```json" in response_text:
             json_str = response_text.split("```json")[1].split("```")[0].strip()
+            print("Extracted JSON from markdown code block")
         elif "```" in response_text:
             json_str = response_text.split("```")[1].strip()
+            print("Extracted JSON from generic code block")
         else:
             json_str = response_text
-
+            print("Using raw response text as JSON")
+            
         # Parse the JSON response
-        parsed_data = json.loads(json_str)
+        try:
+            parsed_data = json.loads(json_str)
+            print("Successfully parsed JSON response")
+            
+            # Validate that the response has all required fields
+            required_fields = ["lead_conversion", "competitor_density", "time_trends", "summary_analytics"]
+            missing_fields = []
+            for field in required_fields:
+                if field not in parsed_data:
+                    missing_fields.append(field)
+                    print(f"Field '{field}' missing from Gemini response.")
+            
+            if missing_fields:
+                print(f"Incomplete Gemini response: missing fields {', '.join(missing_fields)}")
+                # Instead of immediately raising an error, let's try to fill in missing fields
+                mock_data = generate_mock_data(postal_code, healthcare_department, country)
+                for field in missing_fields:
+                    parsed_data[field] = mock_data[field]
+                print("Added missing fields from mock data")
+            
+            return parsed_data
+        except json.JSONDecodeError as json_err:
+            print(f"JSON parsing error: {json_err}")
+            print(f"Raw response content: {response_text[:100]}...")  # Print first 100 chars
+            raise ValueError(f"Invalid JSON response: {json_err}")
         
-        # Validate that the response has all required fields
-        required_fields = ["lead_conversion", "competitor_density", "time_trends", "summary_analytics"]
-        for field in required_fields:
-            if field not in parsed_data:
-                print(f"Field {field} missing from Gemini response. Using fallback data.")
-                raise ValueError(f"Incomplete response: missing {field}")
-                
-        return parsed_data
-
     except Exception as e:
         print(f"Gemini Error: {e}")
         print("Using mock data as fallback.")
 
         if "API key" in str(e) or "not properly configured" in str(e):
-            raise HTTPException(status_code=500, detail="Gemini API key issue. Please check your configuration.")
+            raise HTTPException(status_code=500, detail=f"Gemini API key issue: {str(e)}. Please check your configuration.")
 
         # Use our improved mock data generator as fallback
         return generate_mock_data(postal_code, healthcare_department, country)
