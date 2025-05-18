@@ -19,7 +19,6 @@ import {
   AlertDescription,
 } from '@chakra-ui/react';
 import LeadConversionCardEnhanced from './LeadConversionCardEnhanced';
-import CompetitorDensityCardEnhanced from './CompetitorDensityCardEnhanced';
 import TimeTrendsCardEnhanced from './TimeTrendsCardEnhanced';
 import SummaryCardEnhanced from './SummaryCardEnhanced';
 
@@ -27,18 +26,6 @@ import SummaryCardEnhanced from './SummaryCardEnhanced';
 interface LeadConversionData {
   score: number;
   factors: Record<string, number>;
-}
-
-interface CompetitorInfo {
-  name: string;
-  rating: number;
-  distance_km: number;
-}
-
-interface CompetitorDensityData {
-  total_competitors: number;
-  competitors_list: CompetitorInfo[];
-  heatmap_data: any;
 }
 
 interface TimeTrendData {
@@ -56,7 +43,6 @@ interface SummaryAnalyticsData {
 
 interface AnalyticsData {
   lead_conversion: LeadConversionData;
-  competitor_density: CompetitorDensityData;
   time_trends: TimeTrendData;
   summary_analytics: SummaryAnalyticsData;
 }
@@ -210,16 +196,14 @@ const PredictiveTargeting: React.FC = () => {
           <Text fontSize="sm" color="gray.500" mt={2}>Generating insights using Gemini API</Text>
         </Flex>
       )}
-      
-      {analyticsData && !isLoading && (
+        {analyticsData && !isLoading && (
         <>
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={6}>
             <LeadConversionCardEnhanced data={analyticsData.lead_conversion} />
             <SummaryCardEnhanced data={analyticsData.summary_analytics} />
           </SimpleGrid>
           
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-            <CompetitorDensityCardEnhanced data={analyticsData.competitor_density} />
+          <SimpleGrid columns={{ base: 1, md: 1 }} spacing={6}>
             <TimeTrendsCardEnhanced data={analyticsData.time_trends} />
           </SimpleGrid>
         </>

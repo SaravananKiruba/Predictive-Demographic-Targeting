@@ -42,7 +42,6 @@ run.bat
 ## Features
 
 - **Lead Conversion Analysis**: Predict potential lead conversion rates
-- **Competitor Density**: Analyze existing healthcare providers in target areas
 - **Time Trends**: View historical trends and seasonal patterns
 - **Summary Analytics**: Get key demographic statistics
 
@@ -64,7 +63,7 @@ run.bat
 
 - **POST** `/api/demographic-targeting`: Main endpoint for getting demographic insights
   - Parameters: `postal_code`, `healthcare_department`
-  - Returns analytics data including lead conversion, competitor density, time trends, and summaries
+  - Returns analytics data including lead conversion, time trends, and summaries
 
 ### Adding New Features
 

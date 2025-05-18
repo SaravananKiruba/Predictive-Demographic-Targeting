@@ -43,16 +43,6 @@ class LeadConversionScore(BaseModel):
     score: float
     factors: Dict[str, float]
 
-class CompetitorInfo(BaseModel):
-    name: str
-    rating: float
-    distance_km: float
-
-class CompetitorDensity(BaseModel):
-    total_competitors: int
-    competitors_list: List[CompetitorInfo]
-    heatmap_data: Dict[str, Any]
-
 class TimeTrend(BaseModel):
     months: List[str]
     values: List[float]
@@ -66,7 +56,6 @@ class SummaryAnalytics(BaseModel):
 
 class DemographicTargetingResponse(BaseModel):
     lead_conversion: LeadConversionScore
-    competitor_density: CompetitorDensity
     time_trends: TimeTrend
     summary_analytics: SummaryAnalytics
 
@@ -95,9 +84,8 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
 
     JSON should include:
     1. lead_conversion: {{ score: 0-100, factors: {{...}} }}
-    2. competitor_density: {{ total_competitors, competitors_list: [...], heatmap_data: {{...}} }}
-    3. time_trends: {{ months, values, trend_analysis }}
-    4. summary_analytics: {{ avg_patient_inquiries_per_month, avg_treatment_cost, nearest_major_hospital, high_demand_age_group }}
+    2. time_trends: {{ months, values, trend_analysis }}
+    3. summary_analytics: {{ avg_patient_inquiries_per_month, avg_treatment_cost, nearest_major_hospital, high_demand_age_group }}
     
     IMPORTANT: Return ONLY valid JSON without any additional text, no markdown formatting.
     """
@@ -125,9 +113,8 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
         try:
             parsed_data = json.loads(json_str)
             print("Successfully parsed JSON response")
-            
-            # Validate that the response has all required fields
-            required_fields = ["lead_conversion", "competitor_density", "time_trends", "summary_analytics"]
+              # Validate that the response has all required fields
+            required_fields = ["lead_conversion", "time_trends", "summary_analytics"]
             missing_fields = []
             for field in required_fields:
                 if field not in parsed_data:

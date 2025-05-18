@@ -9,7 +9,6 @@ def generate_lead_conversion_factors(healthcare_department: str) -> Dict[str, fl
     
     # Standard factors that apply to all departments
     factors = {
-        "competitor_density": round(random.uniform(0.1, 1.0), 2),
         "local_demand": round(random.uniform(0.1, 1.0), 2),
         "affordability_index": round(random.uniform(0.1, 1.0), 2),
     }
@@ -57,21 +56,6 @@ def generate_mock_data(postal_code: str, healthcare_department: str, country: Op
             base_trend[i] += random.randint(15, 25)
 
     trend_values = [round(x / 10, 1) for x in base_trend]
-    
-    # Generate competitor data
-    hospital_types = ['Clinic', 'Hospital', 'Medical Center', 'Health Center', 'Specialty Center']
-    prefixes = ['City', 'Global', 'Sunrise', 'Harmony', 'Care', 'Health', 'Regional', 'Community']
-    
-    competitors = [
-        {
-            "name": f"{random.choice(prefixes)} {random.choice(hospital_types)}",
-            "rating": round(random.uniform(3.5, 5.0), 1),
-            "distance_km": round(random.uniform(1.0, 10.0), 1)
-        } for _ in range(random.randint(5, 10))
-    ]
-
-    # Sort competitors by distance
-    competitors.sort(key=lambda x: x["distance_km"])
     
     # Generate trend analysis based on the pattern
     is_uptrend = trend_values[-1] > trend_values[0]
@@ -136,15 +120,6 @@ def generate_mock_data(postal_code: str, healthcare_department: str, country: Op
         "lead_conversion": {
             "score": lead_score,
             "factors": lead_factors
-        },
-        "competitor_density": {
-            "total_competitors": len(competitors),
-            "competitors_list": competitors,
-            "heatmap_data": {
-                "center": postal_code,
-                "radius_km": 5,
-                "country": country or "Auto-detected"
-            }
         },
         "time_trends": {
             "months": months,

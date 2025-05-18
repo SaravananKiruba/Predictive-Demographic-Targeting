@@ -28,7 +28,6 @@ const factorLabelMap: Record<string, string> = {
   income_level: 'Income Level',
   historic_service_interest: 'Historic Interest',
   healthcare_infrastructure: 'Healthcare Infrastructure',
-  competitor_density: 'Competitor Density',
   local_demand: 'Local Demand',
   affordability_index: 'Affordability Index',
   age_demographics: 'Age Demographics',
