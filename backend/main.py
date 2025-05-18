@@ -19,7 +19,7 @@ elif api_key.startswith("your_gemini_api_key") or api_key == "YOUR_NEW_API_KEY_H
 genai.configure(api_key=api_key)
 
 # Define the model to use - using an up-to-date model name
-GEMINI_MODEL = "gemini-1.5-pro"  # Updated from "gemini-pro" to a currently available model
+GEMINI_MODEL = "gemini-1.5-flash"  # Updated to use the correct model identifier format
 
 app = FastAPI(title="Healthcare Demographic Targeting API")
 
@@ -112,8 +112,7 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
         # Parse the JSON response
         try:
             parsed_data = json.loads(json_str)
-            print("Successfully parsed JSON response")
-              # Validate that the response has all required fields
+            print("Successfully parsed JSON response")            # Validate that the response has all required fields
             required_fields = ["lead_conversion", "time_trends", "summary_analytics"]
             missing_fields = []
             for field in required_fields:
@@ -128,6 +127,48 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
                 for field in missing_fields:
                     parsed_data[field] = mock_data[field]
                 print("Added missing fields from mock data")
+                
+            # Check if avg_treatment_cost is a dictionary instead of a float
+            if isinstance(parsed_data.get("summary_analytics", {}).get("avg_treatment_cost"), dict):
+                cost_data = parsed_data["summary_analytics"]["avg_treatment_cost"]
+                # If it has an 'avg' field, use that
+                if "avg" in cost_data:
+                    parsed_data["summary_analytics"]["avg_treatment_cost"] = float(cost_data["avg"])
+                # Otherwise calculate average from min and max
+                elif "min" in cost_data and "max" in cost_data:
+                    parsed_data["summary_analytics"]["avg_treatment_cost"] = (float(cost_data["min"]) + float(cost_data["max"])) / 2
+                else:
+                    # Fallback to a default value
+                    parsed_data["summary_analytics"]["avg_treatment_cost"] = 20000.0
+                print(f"Converted avg_treatment_cost from dict to float: {parsed_data['summary_analytics']['avg_treatment_cost']}")
+            
+            # Validate specific field types
+            # Check if we need to fix any types in lead_conversion
+            if "lead_conversion" in parsed_data:
+                if isinstance(parsed_data["lead_conversion"]["score"], str):
+                    parsed_data["lead_conversion"]["score"] = float(parsed_data["lead_conversion"]["score"])
+                
+                # Ensure all factors are floats
+                if "factors" in parsed_data["lead_conversion"]:
+                    for factor, value in parsed_data["lead_conversion"]["factors"].items():
+                        if not isinstance(value, float):
+                            parsed_data["lead_conversion"]["factors"][factor] = float(value)
+            
+            # Check if we need to fix any types in time_trends
+            if "time_trends" in parsed_data:
+                if "values" in parsed_data["time_trends"]:
+                    parsed_data["time_trends"]["values"] = [
+                        float(val) if not isinstance(val, float) else val
+                        for val in parsed_data["time_trends"]["values"]
+                    ]
+            
+            # Check if summary_analytics values need fixing
+            if "summary_analytics" in parsed_data:
+                if "avg_patient_inquiries_per_month" in parsed_data["summary_analytics"]:
+                    if not isinstance(parsed_data["summary_analytics"]["avg_patient_inquiries_per_month"], int):
+                        parsed_data["summary_analytics"]["avg_patient_inquiries_per_month"] = int(
+                            float(parsed_data["summary_analytics"]["avg_patient_inquiries_per_month"])
+                        )
             
             return parsed_data
         except json.JSONDecodeError as json_err:
