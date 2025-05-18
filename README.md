@@ -1,6 +1,14 @@
 # Predictive Demographic Targeting
 
-AI-powered healthcare demographic targeting system that provides insights for healthcare providers looking to expand into new areas.
+AI-powered healthcare demographic targeting system that provides real-time insights for healthcare providers looking to expand into new areas. Powered by Google's Gemini AI.
+
+## Project Overview
+
+This application provides:
+
+- **Lead Conversion Analysis**: Real-time scoring of how likely patients are to convert in a specific postal code
+- **Time Trend Analysis**: Year-round trends showing seasonal patterns for specific healthcare departments
+- **Summary Analytics**: Key metrics including patient inquiry volume, treatment costs, and target demographics
 
 ## Project Structure
 
@@ -25,7 +33,8 @@ setup.bat
 
 2. Configure your Gemini API key:
    - Edit `backend/.env` file
-   - Replace `your_gemini_api_key` with your actual API key
+   - Replace the API key with your actual Gemini API key
+   - Verify it works by running: `python backend/check_gemini_api.py`
 
 ## Running the Application
 
@@ -39,33 +48,48 @@ run.bat
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:8000/docs
 
+## Real Data Generation
+
+This application uses Google's Gemini AI to generate real-time, dynamic data based on your inputs:
+
+1. Enter any postal code
+2. Select a healthcare department
+3. Click "Generate Insights"
+
+The system will query Gemini to analyze and generate realistic predictions specific to your query parameters. No mock or static data is used - all insights are created dynamically for each request.
+
 ## Features
 
-- **Lead Conversion Analysis**: Predict potential lead conversion rates
-- **Time Trends**: View historical trends and seasonal patterns
-- **Summary Analytics**: Get key demographic statistics
+- **Lead Conversion Analysis**: Real-time scoring of conversion potential with contributing factors
+- **Time Trends**: Dynamic visualization of seasonal patterns specific to department and region
+- **Summary Analytics**: Targeted demographic information customized for each query
 
 ## Development
 
 ### Key Files
 
 #### Backend
-- `backend/main.py`: Main FastAPI application with endpoints
-- `backend/requirements.txt`: Python dependencies
+- `backend/main.py`: Main FastAPI application with Gemini integration
+- `backend/check_gemini_api.py`: Utility to verify Gemini API connectivity
 - `backend/.env`: Configuration for API keys
 
 #### Frontend
-- `frontend/src/components/`: UI components including Dashboard and analytics cards
+- `frontend/src/components/`: UI components for data visualization
 - `frontend/src/App.tsx`: Main application component
 - `frontend/src/theme.ts`: Chakra UI theme customization
 
-### API Endpoints
+### Troubleshooting
 
-- **POST** `/api/demographic-targeting`: Main endpoint for getting demographic insights
-  - Parameters: `postal_code`, `healthcare_department`
-  - Returns analytics data including lead conversion, time trends, and summaries
+If you encounter issues:
 
-### Adding New Features
+1. Verify your Gemini API key is correctly set in `backend/.env`
+2. Check that both Python and Node.js are installed and in your PATH
+3. Run `python backend/check_gemini_api.py` to verify API connectivity
+4. Ensure ports 3000 and 8000 are available on your system
+
+## License
+
+MIT
 
 1. For backend changes, modify `backend/main.py`
 2. For frontend changes, add or modify components in `frontend/src/components/`

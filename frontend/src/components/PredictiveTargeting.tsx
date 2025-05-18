@@ -82,8 +82,7 @@ const PredictiveTargeting: React.FC = () => {
     
     setIsLoading(true);
     setError(null);
-    
-    try {
+      try {
       const response = await fetch('http://localhost:8000/api/demographic-targeting', {
         method: 'POST',
         headers: {
@@ -96,7 +95,9 @@ const PredictiveTargeting: React.FC = () => {
       });
       
       if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.detail || `Server responded with ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
@@ -188,12 +189,12 @@ const PredictiveTargeting: React.FC = () => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      
-    {isLoading && (
+        {isLoading && (
         <Flex justify="center" align="center" direction="column" my={12}>
           <Spinner size="xl" color="blue.500" mb={4} />
           <Text fontSize="lg">Analyzing demographic data for {postalCode} - {department}...</Text>
-          <Text fontSize="sm" color="gray.500" mt={2}>Generating insights using Gemini API</Text>
+          <Text fontSize="sm" color="gray.500" mt={2}>Querying Gemini API for real-time insights</Text>
+          <Text fontSize="xs" color="gray.400" mt={1}>This may take a few seconds as we generate custom data</Text>
         </Flex>
       )}
         {analyticsData && !isLoading && (
@@ -207,8 +208,7 @@ const PredictiveTargeting: React.FC = () => {
             <TimeTrendsCardEnhanced data={analyticsData.time_trends} />
           </SimpleGrid>
         </>
-      )}
-        {!analyticsData && !isLoading && !error && (
+      )}        {!analyticsData && !isLoading && !error && (
         <Flex 
           direction="column" 
           align="center" 
@@ -222,12 +222,12 @@ const PredictiveTargeting: React.FC = () => {
             Predictive Demographic Targeting Tool
           </Text>
           <Text color="gray.600" textAlign="center" mb={4}>
-            Enter a postal code and select a healthcare department to generate insights using the Gemini AI model.
-            All data is fetched dynamically - no static data is used.
+            Enter a postal code and select a healthcare department to generate real-time insights using Google's Gemini AI.
+            Each analysis is generated specifically for your query with dynamic, AI-powered data.
           </Text>
           <Text fontSize="sm" color="blue.600">
-            The system analyzes demographic patterns, market trends, and competition to help optimize
-            your healthcare targeting strategy.
+            The system analyzes demographic patterns, market trends, and competition in real-time to provide
+            accurate targeting data for your healthcare marketing strategy.
           </Text>
         </Flex>
       )}

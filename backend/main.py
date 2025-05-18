@@ -36,7 +36,6 @@ app.add_middleware(
 class DemographicTargetingRequest(BaseModel):
     postal_code: str
     healthcare_department: str
-    country: Optional[str] = None
 
 # Response Models
 class LeadConversionScore(BaseModel):
@@ -65,7 +64,6 @@ async def demographic_insights(request: DemographicTargetingRequest):
     data = await generate_demographic_insights(
         request.postal_code,
         request.healthcare_department,
-        request.country,
     )
     return data
 
@@ -75,29 +73,50 @@ async def demographic_targeting(request: DemographicTargetingRequest):
     return await demographic_insights(request)
 
 # Gemini + Fallback Logic
-async def generate_demographic_insights(postal_code: str, healthcare_department: str, country: Optional[str] = None):
+async def generate_demographic_insights(postal_code: str, healthcare_department: str):
     prompt = f"""
-    Generate a realistic healthcare demographic JSON report for:
-    - Postal Code: {postal_code}
-    - Department: {healthcare_department}
-    - Country: {country or 'Auto-detect'}
+You are a predictive healthcare insights engine.
 
-    JSON should include:
-    1. lead_conversion: {{ score: 0-100, factors: {{...}} }}
-    2. time_trends: {{ months, values, trend_analysis }}
-    3. summary_analytics: {{ avg_patient_inquiries_per_month, avg_treatment_cost, nearest_major_hospital, high_demand_age_group }}
-    
-    IMPORTANT: Return ONLY valid JSON without any additional text, no markdown formatting.
-    """
+Given:
+
+postal_code = "{postal_code}"
+
+healthcare_department = "{healthcare_department}"
+
+Generate a valid JSON output with predictive insights for the given location and medical department. The response must include:
+
+"lead_conversion": {{
+"score": (number between 60 and 98 indicating lead conversion potential for this department in this postal code),
+"factors": {{
+Include 4–6 relevant scoring factors with values between 0.1 and 1.0.
+Choose only relevant keys from:
+"regional_demand", "age_demographics", "healthcare_infrastructure", "population_density",
+"family_income", "specialist_availability", "lifestyle_index", "urban_population_ratio",
+"local_demand", "affordability_index"
+}}
+}}
+
+"time_trends": {{
+"months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+"values": [12 realistic numeric values showing monthly trend in healthcare demand],
+"trend_analysis": "1–2 sentence explanation of the pattern in values (e.g., seasonal spike in summer for pediatrics)"
+}}
+
+"summary_analytics": {{
+"avg_patient_inquiries_per_month": (realistic integer between 100 and 1000),
+"avg_treatment_cost": (realistic USD cost for treatment in this department),
+"nearest_major_hospital": (name of a well-known hospital near the location),
+"high_demand_age_group": (age range in string format like "21–40" or "51–70", based on department demand)
+}}
+
+Return only the JSON. Do not include markdown formatting, code blocks, or explanations.
+"""
     try:
-        # Try to use Gemini for more natural results
-        print(f"Attempting to use Gemini model: {GEMINI_MODEL}")
+        # Try to use Gemini for more natural results        print(f"Attempting to use Gemini model: {GEMINI_MODEL}")
         model = genai.GenerativeModel(GEMINI_MODEL)
         response = model.generate_content(prompt)
         response_text = response.text.strip()
-
         print("Gemini API Response received.")
-        
         # Extract JSON from response
         if "```json" in response_text:
             json_str = response_text.split("```json")[1].split("```")[0].strip()
@@ -112,7 +131,9 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
         # Parse the JSON response
         try:
             parsed_data = json.loads(json_str)
-            print("Successfully parsed JSON response")            # Validate that the response has all required fields
+            print("Successfully parsed JSON response")
+            
+            # Validate that the response has all required fields
             required_fields = ["lead_conversion", "time_trends", "summary_analytics"]
             missing_fields = []
             for field in required_fields:
@@ -122,11 +143,30 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
             
             if missing_fields:
                 print(f"Incomplete Gemini response: missing fields {', '.join(missing_fields)}")
-                # Instead of immediately raising an error, let's try to fill in missing fields
-                mock_data = generate_mock_data(postal_code, healthcare_department, country)
+                # Instead of using mock data, retry with a more explicit prompt
+                retry_prompt = prompt + f"\n\nIMPORTANT: Previous response was missing these fields: {', '.join(missing_fields)}. Please ensure ALL fields are included."
+                retry_response = model.generate_content(retry_prompt)
+                retry_text = retry_response.text.strip()
+                
+                # Extract JSON from retry response
+                if "```json" in retry_text:
+                    retry_json_str = retry_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in retry_text:
+                    retry_json_str = retry_text.split("```")[1].strip()
+                else:
+                    retry_json_str = retry_text
+                
+                # Parse and merge with original response
+                retry_data = json.loads(retry_json_str)
                 for field in missing_fields:
-                    parsed_data[field] = mock_data[field]
-                print("Added missing fields from mock data")
+                    if field in retry_data:
+                        parsed_data[field] = retry_data[field]
+                        print(f"Added missing field '{field}' from retry response")
+                
+                # Check if we still have missing fields
+                still_missing = [field for field in missing_fields if field not in parsed_data]
+                if still_missing:
+                    raise ValueError(f"Failed to get complete data even after retry. Still missing: {', '.join(still_missing)}")
                 
             # Check if avg_treatment_cost is a dictionary instead of a float
             if isinstance(parsed_data.get("summary_analytics", {}).get("avg_treatment_cost"), dict):
@@ -161,8 +201,7 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
                         float(val) if not isinstance(val, float) else val
                         for val in parsed_data["time_trends"]["values"]
                     ]
-            
-            # Check if summary_analytics values need fixing
+              # Check if summary_analytics values need fixing
             if "summary_analytics" in parsed_data:
                 if "avg_patient_inquiries_per_month" in parsed_data["summary_analytics"]:
                     if not isinstance(parsed_data["summary_analytics"]["avg_patient_inquiries_per_month"], int):
@@ -174,17 +213,23 @@ async def generate_demographic_insights(postal_code: str, healthcare_department:
         except json.JSONDecodeError as json_err:
             print(f"JSON parsing error: {json_err}")
             print(f"Raw response content: {response_text[:100]}...")  # Print first 100 chars
-            raise ValueError(f"Invalid JSON response: {json_err}")
+            raise HTTPException(status_code=500, detail=f"Invalid JSON response from Gemini API: {json_err}. Please try again.")
         
     except Exception as e:
         print(f"Gemini Error: {e}")
-        print("Using mock data as fallback.")
-
-        if "API key" in str(e) or "not properly configured" in str(e):
-            raise HTTPException(status_code=500, detail=f"Gemini API key issue: {str(e)}. Please check your configuration.")
-
-        # Use our improved mock data generator as fallback
-        return generate_mock_data(postal_code, healthcare_department, country)
+        error_msg = str(e)
+        
+        if "API key" in error_msg or "not properly configured" in error_msg:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Gemini API key issue: {error_msg}. Please check your configuration."
+            )
+        
+        # Instead of falling back to mock data, provide a clear error message
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing request with Gemini API: {error_msg}. Please try again."
+        )
 
 # Add entry point to run the server when script is executed directly
 if __name__ == "__main__":
