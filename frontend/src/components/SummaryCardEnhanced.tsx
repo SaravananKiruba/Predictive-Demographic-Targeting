@@ -72,7 +72,7 @@ const SummaryCardEnhanced: React.FC<SummaryCardProps> = ({ data }) => {
           <Stat>          <Flex align="center" mb={2}>
             <StatLabel>Avg. Treatment Cost</StatLabel>
           </Flex>
-          <StatNumber>${avg_treatment_cost.toLocaleString()}</StatNumber>
+          <StatNumber>Rs.{avg_treatment_cost.toLocaleString()}</StatNumber>
           <StatHelpText>Average in the region</StatHelpText>        </Stat>          <Stat>          <Flex align="center" mb={2}>
             <StatLabel>Nearest Major Facility</StatLabel>
           </Flex>

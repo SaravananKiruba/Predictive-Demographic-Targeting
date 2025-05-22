@@ -66,17 +66,16 @@ const healthcareDepartments = [
 ];
 
 const PredictiveTargeting: React.FC = () => {
-  const [postalCode, setPostalCode] = useState<string>('');
+  const [city, setCity] = useState<string>('');
   const [department, setDepartment] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const toast = useToast();
-  const handleSubmit = async (e: React.FormEvent) => {
+  const toast = useToast();  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!postalCode || !department) {
-      setError('Please enter both postal code and select a healthcare department.');
+    if (!city || !department) {
+      setError('Please enter both city and select a healthcare department.');
       return;
     }
     
@@ -89,7 +88,7 @@ const PredictiveTargeting: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          postal_code: postalCode,
+          city: city,
           healthcare_department: department,
         }),
       });
@@ -141,12 +140,12 @@ const PredictiveTargeting: React.FC = () => {
       <Box bg="white" p={6} borderRadius="lg" boxShadow="md" mb={8}>
         <form onSubmit={handleSubmit}>
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
-            <FormControl isRequired>
-              <FormLabel>Postal Code / ZIP Code</FormLabel>
+      <FormControl isRequired>
+              <FormLabel>City</FormLabel>
               <Input 
-                placeholder="Enter postal code" 
-                value={postalCode} 
-                onChange={(e) => setPostalCode(e.target.value)}
+                placeholder="Enter city name" 
+                value={city} 
+                onChange={(e) => setCity(e.target.value)}
                 disabled={isLoading}
               />
             </FormControl>
@@ -188,11 +187,10 @@ const PredictiveTargeting: React.FC = () => {
           <AlertTitle mr={2}>Error:</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
-        {isLoading && (
+      )}        {isLoading && (
         <Flex justify="center" align="center" direction="column" my={12}>
           <Spinner size="xl" color="blue.500" mb={4} />
-          <Text fontSize="lg">Analyzing demographic data for {postalCode} - {department}...</Text>
+          <Text fontSize="lg">Analyzing demographic data for {city} - {department}...</Text>
           <Text fontSize="sm" color="gray.500" mt={2}>Querying Gemini API for real-time insights</Text>
           <Text fontSize="xs" color="gray.400" mt={1}>This may take a few seconds as we generate custom data</Text>
         </Flex>
@@ -208,8 +206,7 @@ const PredictiveTargeting: React.FC = () => {
             <TimeTrendsCardEnhanced data={analyticsData.time_trends} />
           </SimpleGrid>
         </>
-      )}        {!analyticsData && !isLoading && !error && (
-        <Flex 
+      )}        {!analyticsData && !isLoading && !error && (        <Flex 
           direction="column" 
           align="center" 
           justify="center" 
@@ -222,7 +219,7 @@ const PredictiveTargeting: React.FC = () => {
             Predictive Demographic Targeting Tool
           </Text>
           <Text color="gray.600" textAlign="center" mb={4}>
-            Enter a postal code and select a healthcare department to generate real-time insights using Google's Gemini AI.
+            Enter a city name and select a healthcare department to generate real-time insights using Google's Gemini AI.
             Each analysis is generated specifically for your query with dynamic, AI-powered data.
           </Text>
           <Text fontSize="sm" color="blue.600">

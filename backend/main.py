@@ -6,7 +6,6 @@ import os
 from dotenv import load_dotenv
 import json
 from typing import Optional, List, Dict, Any
-from helpers import generate_mock_data
 
 # Load environment variables
 load_dotenv()
@@ -34,7 +33,7 @@ app.add_middleware(
 
 # Request Model
 class DemographicTargetingRequest(BaseModel):
-    postal_code: str
+    city: str
     healthcare_department: str
 
 # Response Models
@@ -62,7 +61,7 @@ class DemographicTargetingResponse(BaseModel):
 @app.post("/api/demographic-insights", response_model=DemographicTargetingResponse)
 async def demographic_insights(request: DemographicTargetingRequest):
     data = await generate_demographic_insights(
-        request.postal_code,
+        request.city,
         request.healthcare_department,
     )
     return data
@@ -72,51 +71,56 @@ async def demographic_targeting(request: DemographicTargetingRequest):
     """Alias endpoint for React frontend compatibility"""
     return await demographic_insights(request)
 
-# Gemini + Fallback Logic
-async def generate_demographic_insights(postal_code: str, healthcare_department: str):
-    prompt = f"""
-You are a predictive healthcare insights engine.
+# Gemini Insights Generation
+async def generate_demographic_insights(city: str, healthcare_department: str):
+    prompt = f'''## TASK
+You are a healthcare analytics AI providing data-driven insights for healthcare marketing. Generate realistic demographic targeting data for {city} and {healthcare_department}.
 
-Given:
+## OUTPUT FORMAT
+Return a clean JSON object with no markdown formatting, code blocks, or explanations. Follow this exact structure:
 
-postal_code = "{postal_code}"
-
-healthcare_department = "{healthcare_department}"
-
-Generate a valid JSON output with predictive insights for the given location and medical department. The response must include:
-
-"lead_conversion": {{
-"score": (number between 60 and 98 indicating lead conversion potential for this department in this postal code),
-"factors": {{
-Include 4–6 relevant scoring factors with values between 0.1 and 1.0.
-Choose only relevant keys from:
-"regional_demand", "age_demographics", "healthcare_infrastructure", "population_density",
-"family_income", "specialist_availability", "lifestyle_index", "urban_population_ratio",
-"local_demand", "affordability_index"
-}}
-}}
-
-"time_trends": {{
-"months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-"values": [12 realistic numeric values showing monthly trend in healthcare demand],
-"trend_analysis": "1–2 sentence explanation of the pattern in values (e.g., seasonal spike in summer for pediatrics)"
+{{
+  "lead_conversion": {{
+    "score": <float between 60.0 and 98.0>,
+    "factors": {{
+      <4-6 relevant factors as keys with float values between 0.1 and 1.0>
+    }}
+  }},
+  "time_trends": {{
+    "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    "values": [<12 numbers between 100-1000 representing monthly patient inquiries>],
+    "trend_analysis": "<1-2 sentence evidence-based analysis of the pattern>"
+  }},
+  "summary_analytics": {{
+    "avg_patient_inquiries_per_month": <integer between 200-800>,
+    "avg_treatment_cost": <float representing realistic treatment cost in INR>,
+    "nearest_major_hospital": "<name of an actual hospital in {city}>",
+    "high_demand_age_group": "<appropriate age range for {healthcare_department}>"
+  }}
 }}
 
-"summary_analytics": {{
-"avg_patient_inquiries_per_month": (realistic integer between 100 and 1000),
-"avg_treatment_cost": (realistic USD cost for treatment in this department),
-"nearest_major_hospital": (name of a well-known hospital near the location),
-"high_demand_age_group": (age range in string format like "21–40" or "51–70", based on department demand)
-}}
-
-Return only the JSON. Do not include markdown formatting, code blocks, or explanations.
-"""
+## REQUIREMENTS
+1. All data must be REALISTIC and REASONABLE for {city} and {healthcare_department}
+2. Choose factors from: "regional_demand", "age_demographics", "healthcare_infrastructure", "population_density", "family_income", "specialist_availability", "lifestyle_index", "urban_population_ratio", "local_demand", "affordability_index"
+3. For "nearest_major_hospital", use an actual hospital name in {city}
+4. Values must be consistent with healthcare industry patterns
+5. Time trend should reflect seasonal patterns appropriate for {healthcare_department}
+6. DO NOT include explanatory text outside the JSON structure
+'''
     try:
-        # Try to use Gemini for more natural results        print(f"Attempting to use Gemini model: {GEMINI_MODEL}")
+        print(f"Attempting to use Gemini model: {GEMINI_MODEL}")
         model = genai.GenerativeModel(GEMINI_MODEL)
         response = model.generate_content(prompt)
         response_text = response.text.strip()
         print("Gemini API Response received.")
+        
+        # Handle empty responses
+        if not response_text:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No data found for {city} - {healthcare_department}."
+            )
+            
         # Extract JSON from response
         if "```json" in response_text:
             json_str = response_text.split("```json")[1].split("```")[0].strip()
@@ -143,8 +147,8 @@ Return only the JSON. Do not include markdown formatting, code blocks, or explan
             
             if missing_fields:
                 print(f"Incomplete Gemini response: missing fields {', '.join(missing_fields)}")
-                # Instead of using mock data, retry with a more explicit prompt
-                retry_prompt = prompt + f"\n\nIMPORTANT: Previous response was missing these fields: {', '.join(missing_fields)}. Please ensure ALL fields are included."
+                # Retry with a more explicit prompt
+                retry_prompt = prompt + f"\n\n## IMPORTANT\nYour previous response was missing these required fields: {', '.join(missing_fields)}. Please ensure ALL required fields are included in the JSON."
                 retry_response = model.generate_content(retry_prompt)
                 retry_text = retry_response.text.strip()
                 
@@ -166,24 +170,25 @@ Return only the JSON. Do not include markdown formatting, code blocks, or explan
                 # Check if we still have missing fields
                 still_missing = [field for field in missing_fields if field not in parsed_data]
                 if still_missing:
-                    raise ValueError(f"Failed to get complete data even after retry. Still missing: {', '.join(still_missing)}")
+                    raise HTTPException(
+                        status_code=404, 
+                        detail=f"No complete data found for {city} - {healthcare_department}. Missing fields: {', '.join(still_missing)}"
+                    )
                 
-            # Check if avg_treatment_cost is a dictionary instead of a float
+            # Normalize data types
+            # Handle avg_treatment_cost
             if isinstance(parsed_data.get("summary_analytics", {}).get("avg_treatment_cost"), dict):
                 cost_data = parsed_data["summary_analytics"]["avg_treatment_cost"]
-                # If it has an 'avg' field, use that
                 if "avg" in cost_data:
                     parsed_data["summary_analytics"]["avg_treatment_cost"] = float(cost_data["avg"])
-                # Otherwise calculate average from min and max
                 elif "min" in cost_data and "max" in cost_data:
                     parsed_data["summary_analytics"]["avg_treatment_cost"] = (float(cost_data["min"]) + float(cost_data["max"])) / 2
                 else:
-                    # Fallback to a default value
+                    # Use a realistic value based on department
                     parsed_data["summary_analytics"]["avg_treatment_cost"] = 20000.0
-                print(f"Converted avg_treatment_cost from dict to float: {parsed_data['summary_analytics']['avg_treatment_cost']}")
+                print(f"Normalized avg_treatment_cost: {parsed_data['summary_analytics']['avg_treatment_cost']}")
             
-            # Validate specific field types
-            # Check if we need to fix any types in lead_conversion
+            # Fix lead_conversion score type
             if "lead_conversion" in parsed_data:
                 if isinstance(parsed_data["lead_conversion"]["score"], str):
                     parsed_data["lead_conversion"]["score"] = float(parsed_data["lead_conversion"]["score"])
@@ -194,14 +199,15 @@ Return only the JSON. Do not include markdown formatting, code blocks, or explan
                         if not isinstance(value, float):
                             parsed_data["lead_conversion"]["factors"][factor] = float(value)
             
-            # Check if we need to fix any types in time_trends
+            # Fix time_trends values type
             if "time_trends" in parsed_data:
                 if "values" in parsed_data["time_trends"]:
                     parsed_data["time_trends"]["values"] = [
                         float(val) if not isinstance(val, float) else val
                         for val in parsed_data["time_trends"]["values"]
                     ]
-              # Check if summary_analytics values need fixing
+                    
+            # Fix summary_analytics types
             if "summary_analytics" in parsed_data:
                 if "avg_patient_inquiries_per_month" in parsed_data["summary_analytics"]:
                     if not isinstance(parsed_data["summary_analytics"]["avg_patient_inquiries_per_month"], int):
@@ -210,25 +216,32 @@ Return only the JSON. Do not include markdown formatting, code blocks, or explan
                         )
             
             return parsed_data
+            
         except json.JSONDecodeError as json_err:
             print(f"JSON parsing error: {json_err}")
             print(f"Raw response content: {response_text[:100]}...")  # Print first 100 chars
-            raise HTTPException(status_code=500, detail=f"Invalid JSON response from Gemini API: {json_err}. Please try again.")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"No valid data found for {city} - {healthcare_department}. Please try a different location or department."
+            )
         
+    except HTTPException:
+        # Re-raise HTTP exceptions without modification
+        raise
     except Exception as e:
-        print(f"Gemini Error: {e}")
+        print(f"Gemini API Error: {e}")
         error_msg = str(e)
         
         if "API key" in error_msg or "not properly configured" in error_msg:
             raise HTTPException(
                 status_code=500, 
-                detail=f"Gemini API key issue: {error_msg}. Please check your configuration."
+                detail=f"API configuration error: {error_msg}. Please contact support."
             )
         
-        # Instead of falling back to mock data, provide a clear error message
+        # Clear error message instead of using mock data
         raise HTTPException(
-            status_code=500,
-            detail=f"Error processing request with Gemini API: {error_msg}. Please try again."
+            status_code=404,
+            detail=f"No data available for {city} - {healthcare_department}. Please try a different location or department."
         )
 
 # Add entry point to run the server when script is executed directly
