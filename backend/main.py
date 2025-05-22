@@ -88,11 +88,11 @@ Return a clean JSON object with no markdown formatting, code blocks, or explanat
   }},
   "time_trends": {{
     "months": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-    "values": [<12 numbers between 100-1000 representing monthly patient inquiries>],
+    "values": [<12 numbers representing monthly patient inquiries>],
     "trend_analysis": "<1-2 sentence evidence-based analysis of the pattern>"
   }},
   "summary_analytics": {{
-    "avg_patient_inquiries_per_month": <integer between 200-800>,
+    "avg_patient_inquiries_per_month": <integer>,
     "avg_treatment_cost": <float representing realistic treatment cost in INR>,
     "nearest_major_hospital": "<name of an actual hospital in {city}>",
     "high_demand_age_group": "<appropriate age range for {healthcare_department}>"
